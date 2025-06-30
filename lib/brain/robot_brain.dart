@@ -80,31 +80,12 @@ class RobotBrain {
     });
   }
 
-  Future<void> _processFrame(Uint8List imageBytes) async {
-    // Depth estimation
-    final depthMap = await depthEstimator.estimateDepth(imageBytes);
-    // Object detection
-    await objectDetector.detectObjects(imageBytes);
-    // Voice command processing
-    final command = voiceProcessor.getCommand();
-    // Navigation logic
-    String? action;
-    if (humanFollower.isActive) {
-      action = await humanFollower.follow(imageBytes, depthMap);
-    } else if (command != null) {
-      action = _handleCommand(command);
-    } else {
-      action = depthNavigator.getNavigationAction(depthMap);
-    }
-    debugPrint("Action: $action");
-  }
-
-  String? _handleCommand(Command command) {
+  Future<String?> _handleCommand(Command command) async {
     switch (command.type) {
       case CommandType.detect:
         final objects = objectDetector.lastDetectedObjects;
         if (objects.isNotEmpty) {
-          voiceProcessor.speak("I see ${objects.join(', ')}");
+          voiceProcessor.speak("I see ${objects.join(', ')}");
         } else {
           voiceProcessor.speak("I don't see any objects");
         }
@@ -123,5 +104,24 @@ class RobotBrain {
       default:
         return null;
     }
+  }
+
+  Future<void> _processFrame(Uint8List imageBytes) async {
+    // Depth estimation
+    final depthMap = await depthEstimator.estimateDepth(imageBytes);
+    // Object detection
+    await objectDetector.detectObjects(imageBytes);
+    // Voice command processing
+    final command = voiceProcessor.getCommand();
+    // Navigation logic
+    String? action;
+    if (humanFollower.isActive) {
+      action = await humanFollower.follow(imageBytes, depthMap);
+    } else if (command != null) {
+      action = await _handleCommand(command);
+    } else {
+      action = depthNavigator.getNavigationAction(depthMap);
+    }
+    debugPrint("Action: $action");
   }
 }
