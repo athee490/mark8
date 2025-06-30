@@ -1,0 +1,6 @@
+# Gemini API Key
+GEMINI_API_KEY=AIzaSyDwNFFtk7rFsw6smiRzsebxQxjpF9auq0g
+
+# Other sensitive variables (optional)
+DEPTH_MODEL_PATH=assets/models/midas_small.tflite
+YOLO_MODEL_PATH=assets/models/yolov5n.tflite
