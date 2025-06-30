@@ -8,9 +8,27 @@ List<CameraDescription> cameras = [];
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
-  cameras = await availableCameras();
-  await Config.load();
+  try {
+    print('Loading .env...');
+    await dotenv.load();
+    print('.env loaded');
+  } catch (e) {
+    print('Error loading .env: $e');
+  }
+  try {
+    print('Getting available cameras...');
+    cameras = await availableCameras();
+    print('Cameras loaded: \\${cameras.length}');
+  } catch (e) {
+    print('Error getting cameras: $e');
+  }
+  try {
+    print('Loading config...');
+    await Config.load();
+    print('Config loaded');
+  } catch (e) {
+    print('Error loading config: $e');
+  }
   runApp(const Mark7App());
 }
 
@@ -48,20 +66,37 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _initRobot() async {
-    robotBrain = RobotBrain(cameras: widget.cameras);
-    await robotBrain.initialize();
-    setState(() => _status = "Ready");
+    try {
+      print('Initializing RobotBrain...');
+      robotBrain = RobotBrain(cameras: widget.cameras);
+      await robotBrain.initialize();
+      print('RobotBrain initialized');
+      setState(() => _status = "Ready");
+    } catch (e, st) {
+      print('Error initializing RobotBrain: $e\\n$st');
+      setState(() => _status = "Error: $e");
+    }
   }
 
   void _toggleOperation() {
     setState(() {
       _isRunning = !_isRunning;
       if (_isRunning) {
-        robotBrain.start();
-        _status = "Running";
+        try {
+          robotBrain.start();
+          _status = "Running";
+        } catch (e) {
+          print('Error starting RobotBrain: $e');
+          _status = "Error: $e";
+        }
       } else {
-        robotBrain.stop();
-        _status = "Stopped";
+        try {
+          robotBrain.stop();
+          _status = "Stopped";
+        } catch (e) {
+          print('Error stopping RobotBrain: $e');
+          _status = "Error: $e";
+        }
       }
     });
   }
@@ -92,7 +127,11 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void dispose() {
-    robotBrain.dispose();
+    try {
+      robotBrain.dispose();
+    } catch (e) {
+      print('Error disposing RobotBrain: $e');
+    }
     super.dispose();
   }
 }
