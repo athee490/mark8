@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QASystem {
   static const double similarityThreshold = 0.8;
@@ -16,7 +17,7 @@ class QASystem {
       debugPrint("QA database error: $e");
     }
     // Check Gemini availability
-    _geminiAvailable = const bool.fromEnvironment('GEMINI_API_KEY', defaultValue: false);
+    _geminiAvailable = dotenv.env['GEMINI_API_KEY'] != null && dotenv.env['GEMINI_API_KEY']!.isNotEmpty;
   }
 
   Future<String> answer(String question) async {
@@ -44,11 +45,12 @@ class QASystem {
 
   Future<String> _askGemini(String question) async {
     try {
-      final apiKey = const String.fromEnvironment('GEMINI_API_KEY');
+      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      if (apiKey.isEmpty) {
+        return "Gemini API key is missing.";
+      }
       final model = GenerativeModel(model: 'gemini-pro', apiKey: apiKey);
-      final content = Content.text(question);
-      final response = await model.generateContent([content]);
-      // google_generative_ai 0.2.0: text is in response.text
+      final response = await model.generateContent([Content.text(question)]);
       return response.text ?? "I couldn't understand that question";
     } catch (e) {
       return "Connection error: ${e.toString()}";

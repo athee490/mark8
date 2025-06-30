@@ -117,7 +117,7 @@ class RobotBrain {
         humanFollower.deactivate();
         return command.action;
       case CommandType.question:
-        final answer = qaSystem.answer(command.text ?? "");
+        String answer = await qaSystem.answer(command.text ?? "");
         voiceProcessor.speak(answer);
         return null;
       default:

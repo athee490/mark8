@@ -45,7 +45,8 @@ class HumanFollower {
 
   Future<List<int>> _detectHuman(img.Image image) async {
     // Get all detected objects
-    final objects = await _objectDetector.detectObjects(image.getBytes());
+    final pngBytes = Uint8List.fromList(img.encodePng(image));
+    final objects = await _objectDetector.detectObjects(pngBytes);
 
     // Find the largest person in the frame
     if (!objects.contains('person')) return [];
@@ -58,7 +59,7 @@ class HumanFollower {
       (width * 0.35).toInt(),  // x1
       (height * 0.35).toInt(), // y1
       (width * 0.65).toInt(),  // x2
-      (height * 0.65).toInt()   // y2
+      (height * 0.65).toInt(), // y2
     ];
   }
 

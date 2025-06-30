@@ -4,6 +4,10 @@ import 'package:image/image.dart' as img;
 import '../utils/tflite_helper.dart';
 import '../utils/image_utils.dart';
 
+List<List<double>> reshape1DTo2D(List<double> input, int rows, int cols) {
+  return List.generate(rows, (i) => input.sublist(i * cols, (i + 1) * cols));
+}
+
 class DepthEstimator {
   late Interpreter _interpreter;
   bool _isInitialized = false;
@@ -26,10 +30,10 @@ class DepthEstimator {
     final input = ImageUtils.imageToFloat32List(resized, 256, 256);
     
     // Run inference
-    final output = List.filled(256 * 256, 0.0).reshape([1, 256, 256]);
+    final output = List.filled(256 * 256, 0.0);
     _interpreter.run(input, output);
     
-    return output[0];
+    return reshape1DTo2D(output, 256, 256);
   }
 
   void dispose() {
