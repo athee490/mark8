@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
+import 'package:image/image.dart' show getRed, getGreen, getBlue;
 
 class ImageUtils {
   static Float32List imageToFloat32List(
@@ -14,9 +15,9 @@ class ImageUtils {
     for (int y = 0; y < inputHeight; y++) {
       for (int x = 0; x < inputWidth; x++) {
         final pixel = image.getPixel(x, y);
-        buffer[pixelIndex++] = img.getRed(pixel) / 255.0;
-        buffer[pixelIndex++] = img.getGreen(pixel) / 255.0;
-        buffer[pixelIndex++] = img.getBlue(pixel) / 255.0;
+        buffer[pixelIndex++] = getRed(pixel) / 255.0;
+        buffer[pixelIndex++] = getGreen(pixel) / 255.0;
+        buffer[pixelIndex++] = getBlue(pixel) / 255.0;
       }
     }
     
