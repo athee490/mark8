@@ -61,7 +61,8 @@ dev_dependencies:
 flutter:
   assets:
     - .env
-
+    - assets/models/midas_small.tflite
+    - assets/models/yolov5n.tflite
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
