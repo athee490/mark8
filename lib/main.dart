@@ -9,25 +9,25 @@ List<CameraDescription> cameras = [];
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    print('Loading .env...');
+    print('[main] Loading .env...');
     await dotenv.load();
-    print('.env loaded');
+    print('[main] .env loaded');
   } catch (e) {
-    print('Error loading .env: $e');
+    print('[main] Error loading .env: $e');
   }
   try {
-    print('Getting available cameras...');
+    print('[main] Getting available cameras...');
     cameras = await availableCameras();
-    print('Cameras loaded: \\${cameras.length}');
+    print('[main] Cameras loaded: \\${cameras.length}');
   } catch (e) {
-    print('Error getting cameras: $e');
+    print('[main] Error getting cameras: $e');
   }
   try {
-    print('Loading config...');
+    print('[main] Loading config...');
     await Config.load();
-    print('Config loaded');
+    print('[main] Config loaded');
   } catch (e) {
-    print('Error loading config: $e');
+    print('[main] Error loading config: $e');
   }
   runApp(const Mark7App());
 }
@@ -37,6 +37,7 @@ class Mark7App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('[Mark7App] Building MaterialApp');
     return MaterialApp(
       title: 'Mark7 Robot',
       theme: ThemeData.dark(),

@@ -19,16 +19,21 @@ class VoiceProcessor {
   bool _isInitialized = false;
 
   Future<void> initialize() async {
+    print('[VoiceProcessor] Initializing speech and TTS...');
     _isInitialized = await _speech.initialize();
+    print('[VoiceProcessor] Speech initialized: \\$_isInitialized');
     await _tts.setLanguage("en-US");
     await _tts.setSpeechRate(0.5);
+    print('[VoiceProcessor] TTS initialized');
   }
 
   void startListening() {
+    print('[VoiceProcessor] startListening called. isInitialized=\\$_isInitialized, isListening=\\$_isListening');
     if (!_isInitialized || _isListening) return;
     
     _speech.listen(
       onResult: (result) {
+        print('[VoiceProcessor] Speech result: \\${result.recognizedWords}, final=\\${result.finalResult}');
         if (result.finalResult) {
           _processSpeech(result.recognizedWords);
         }
@@ -37,16 +42,20 @@ class VoiceProcessor {
       pauseFor: const Duration(seconds: 3),
     );
     _isListening = true;
+    print('[VoiceProcessor] Listening started');
   }
 
   void stopListening() {
+    print('[VoiceProcessor] stopListening called. isListening=\\$_isListening');
     if (_isListening) {
       _speech.stop();
       _isListening = false;
+      print('[VoiceProcessor] Listening stopped');
     }
   }
 
   void _processSpeech(String text) {
+    print('[VoiceProcessor] Processing speech: \\${text}');
     final lowerText = text.toLowerCase();
     CommandType type = CommandType.unknown;
     String? action;
@@ -64,6 +73,7 @@ class VoiceProcessor {
     }
     
     _commandQueue.add(Command(type: type, action: action, text: text));
+    print('[VoiceProcessor] Command queued: type=\\$type, action=\\$action, text=\\$text');
   }
 
   bool _isCommand(String text) {

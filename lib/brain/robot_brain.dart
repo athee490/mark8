@@ -23,26 +23,47 @@ class RobotBrain {
   RobotBrain({required this.cameras});
 
   Future<void> initialize() async {
-    cameraController = CameraController(
-      cameras.first,
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
-    await cameraController.initialize();
+    try {
+      print('[RobotBrain] Initializing camera controller...');
+      cameraController = CameraController(
+        cameras.first,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await cameraController.initialize();
+      print('[RobotBrain] Camera initialized');
 
-    depthEstimator = DepthEstimator();
-    await depthEstimator.loadModel();
+      print('[RobotBrain] Initializing depth estimator...');
+      depthEstimator = DepthEstimator();
+      await depthEstimator.loadModel();
+      print('[RobotBrain] Depth estimator loaded');
 
-    objectDetector = ObjectDetector();
-    await objectDetector.loadModel();
+      print('[RobotBrain] Initializing object detector...');
+      objectDetector = ObjectDetector();
+      await objectDetector.loadModel();
+      print('[RobotBrain] Object detector loaded');
 
-    voiceProcessor = VoiceProcessor();
-    await voiceProcessor.initialize();
+      print('[RobotBrain] Initializing voice processor...');
+      voiceProcessor = VoiceProcessor();
+      await voiceProcessor.initialize();
+      print('[RobotBrain] Voice processor initialized');
 
-    depthNavigator = DepthNavigator();
-    humanFollower = HumanFollower(objectDetector, depthNavigator);
-    qaSystem = QASystem();
-    await qaSystem.loadDatabase();
+      print('[RobotBrain] Initializing depth navigator...');
+      depthNavigator = DepthNavigator();
+      print('[RobotBrain] Depth navigator initialized');
+
+      print('[RobotBrain] Initializing human follower...');
+      humanFollower = HumanFollower(objectDetector, depthNavigator);
+      print('[RobotBrain] Human follower initialized');
+
+      print('[RobotBrain] Initializing QA system...');
+      qaSystem = QASystem();
+      await qaSystem.loadDatabase();
+      print('[RobotBrain] QA system initialized');
+    } catch (e, st) {
+      print('[RobotBrain] Initialization error: $e\n$st');
+      rethrow;
+    }
   }
 
   void start() {

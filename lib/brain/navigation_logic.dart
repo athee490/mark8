@@ -5,27 +5,43 @@ class DepthNavigator {
   static const double cameraOffsetRatio = 0.2;
 
   String getNavigationAction(List<List<double>> depthMap) {
-    if (depthMap.isEmpty) return "stop";
+    print('[DepthNavigator] getNavigationAction called');
+    if (depthMap.isEmpty) {
+      print('[DepthNavigator] Empty depth map');
+      return "stop";
+    }
     
     final depths = _analyzeDepth(depthMap);
+    print('[DepthNavigator] Depths analyzed: \\${depths}');
     
     // Cliff detection
     if (depths['ground'] != null && depths['ground']! > cliffThreshold) {
+      print('[DepthNavigator] Cliff detected');
       if (depths['left'] != null && depths['right'] != null) {
-        return depths['left']! > depths['right']! ? "turn_left" : "turn_right";
+        final action = depths['left']! > depths['right']! ? "turn_left" : "turn_right";
+        print('[DepthNavigator] Cliff action: \\${action}');
+        return action;
       } else {
+        print('[DepthNavigator] Unknown cliff direction');
         return "unknown";
       }
     }
     
     // Obstacle avoidance
     final maxDir = _findMaxDepthDirection(depths);
-    if (maxDir == null || depths[maxDir] == null || depths[maxDir]! < obstacleThreshold) return "stop";
+    print('[DepthNavigator] Max depth direction: \\${maxDir}');
+    if (maxDir == null || depths[maxDir] == null || depths[maxDir]! < obstacleThreshold) {
+      print('[DepthNavigator] No clear path, stopping');
+      return "stop";
+    }
     
-    return _directionToAction(maxDir);
+    final action = _directionToAction(maxDir);
+    print('[DepthNavigator] Navigation action: \\${action}');
+    return action;
   }
 
   Map<String, double?> _analyzeDepth(List<List<double>> depthMap) {
+    print('[DepthNavigator] _analyzeDepth called');
     final height = depthMap.length;
     final width = depthMap[0].length;
     final offset = (width * cameraOffsetRatio).toInt();
@@ -39,15 +55,18 @@ class DepthNavigator {
     final groundStart = (height * (1 - groundHeightRatio)).toInt();
     final ground = _regionDepth(depthMap, 0, width, groundStart, height);
     
-    return {
+    final result = {
       'left': left,
       'center': center,
       'right': right,
       'ground': ground,
     };
+    print('[DepthNavigator] Depth regions: \\${result}');
+    return result;
   }
 
   double? _regionDepth(List<List<double>> depthMap, int x1, int x2, int y1, int y2) {
+    print('[DepthNavigator] _regionDepth called: x1=\\$x1, x2=\\$x2, y1=\\$y1, y2=\\$y2');
     double sum = 0;
     int count = 0;
     
@@ -59,11 +78,13 @@ class DepthNavigator {
         }
       }
     }
-    
-    return count > 0 ? sum / count : null;
+    final avg = count > 0 ? sum / count : null;
+    print('[DepthNavigator] Region average: \\${avg}');
+    return avg;
   }
 
   String? _findMaxDepthDirection(Map<String, double?> depths) {
+    print('[DepthNavigator] _findMaxDepthDirection called');
     String? maxKey;
     double? maxValue;
     for (final key in ['left', 'center', 'right']) {
@@ -73,10 +94,12 @@ class DepthNavigator {
         maxKey = key;
       }
     }
+    print('[DepthNavigator] Max direction: \\${maxKey}');
     return maxKey;
   }
 
   String _directionToAction(String? direction) {
+    print('[DepthNavigator] _directionToAction called: direction=\\$direction');
     switch (direction) {
       case 'left':
         return "turn_left";
