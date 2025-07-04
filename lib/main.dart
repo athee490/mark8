@@ -71,23 +71,18 @@ class _RobotBrainWidgetState extends State<RobotBrainWidget> {
   void initState() {
     super.initState();
     print('[RobotBrainWidget] initState called');
-    _brain = RobotBrain(camera: cameras.first);
+    _brain = RobotBrain(cameras: cameras); // FIX: pass cameras list, not camera
 
-    _brain.onDirectionChanged = (dir) {
-      print('[RobotBrainWidget] Direction changed to $dir');
-      setState(() {
-        _currentDirection = dir.toString();
-      });
-    };
-
-    _brain.onSpoken = (text) {
-      print('[RobotBrainWidget] TTS spoke: $text');
-      setState(() {
-        _lastSpoken = text;
-      });
-    };
-
-    _brain.init();
+    // Remove non-existent setters and methods
+    // Optionally, you can add listeners or callbacks if RobotBrain exposes them
+    _brain.initialize().then((_) {
+      print('[RobotBrainWidget] RobotBrain initialized');
+      setState(() {});
+      // Optionally, start the brain if needed
+      _brain.start();
+    }).catchError((e, st) {
+      print('[RobotBrainWidget] RobotBrain initialization error: $e\n$st');
+    });
   }
 
   @override

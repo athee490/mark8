@@ -63,6 +63,7 @@ flutter:
     - .env
     - assets/models/midas_small.tflite
     - assets/models/yolov5n.tflite
+    - assets/qa_database.json
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
