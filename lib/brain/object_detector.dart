@@ -3,17 +3,21 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
-import '../utils/image_utils.dart';
 import '../utils/tflite_helper.dart';
-import 'human_follower.dart'; // for DetectedObject
+import '../utils/image_utils.dart';
+
+class DetectedObject {
+  final String label;
+  final Rect boundingBox;
+
+  DetectedObject({required this.label, required this.boundingBox});
+}
 
 class ObjectDetector {
   late Interpreter _interpreter;
   bool _isInitialized = false;
 
-  // Provide actual label list here
-  final List<String> _labels = ['person', 'cat', 'dog'];
-
+  final List<String> _labels = ['person', 'car', 'dog']; // Add your real labels
   List<String> _lastDetectedObjects = [];
   List<String> get lastDetectedObjects => _lastDetectedObjects;
 
@@ -76,6 +80,37 @@ class ObjectDetector {
     return _extractBoundingBoxes(outputBuffer[0]);
   }
 
+  List<DetectedObject> _extractBoundingBoxes(List<List<double>> output) {
+    final boxes = <DetectedObject>[];
+
+    for (final prediction in output) {
+      if (prediction[4] > 0.5) {
+        final classScores = prediction.sublist(5);
+        final maxScore = classScores.reduce(max);
+        final classIndex = classScores.indexOf(maxScore);
+
+        final centerX = prediction[0];
+        final centerY = prediction[1];
+        final width = prediction[2];
+        final height = prediction[3];
+
+        final left = centerX - width / 2;
+        final top = centerY - height / 2;
+        final right = centerX + width / 2;
+        final bottom = centerY + height / 2;
+
+        boxes.add(
+          DetectedObject(
+            label: _labels[classIndex],
+            boundingBox: Rect.fromLTRB(left.toDouble(), top.toDouble(), right.toDouble(), bottom.toDouble()),
+          ),
+        );
+      }
+    }
+
+    return boxes;
+  }
+
   List<String> _processOutput(List<List<double>> output) {
     final results = <String>[];
     for (var det in output) {
@@ -87,31 +122,6 @@ class ObjectDetector {
       }
     }
     return results.toSet().toList();
-  }
-
-  List<DetectedObject> _extractBoundingBoxes(List<List<double>> output) {
-    final boxes = <DetectedObject>[];
-    for (var det in output) {
-      if (det[4] > 0.5) {
-        final classScores = det.sublist(5);
-        final maxScore = classScores.reduce(max);
-        final classId = classScores.indexOf(maxScore);
-        final label = _labels[classId];
-
-        final cx = det[0] * 640;
-        final cy = det[1] * 640;
-        final w = det[2] * 640;
-        final h = det[3] * 640;
-        final left = cx - w / 2;
-        final top = cy - h / 2;
-
-        boxes.add(DetectedObject(
-          label: label,
-          boundingBox: Rect.fromLTWH(left, top, w, h),
-        ));
-      }
-    }
-    return boxes;
   }
 
   void dispose() {

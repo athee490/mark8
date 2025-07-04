@@ -3,7 +3,7 @@ import 'package:image/image.dart' as img;
 class ImageUtils {
   static List<double> imageToFloat32List(img.Image image, int inputWidth, int inputHeight) {
     final resized = img.copyResize(image, width: inputWidth, height: inputHeight);
-    final floatList = List<double>.filled(inputWidth * inputHeight * 3, 0.0);
+    final floatList = List<double>.filled(inputWidth * inputHeight * 3, 0);
 
     int index = 0;
     for (int y = 0; y < inputHeight; y++) {
@@ -14,6 +14,7 @@ class ImageUtils {
         floatList[index++] = img.getBlue(pixel) / 255.0;
       }
     }
+
     return floatList;
   }
 }
