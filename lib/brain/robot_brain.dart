@@ -114,24 +114,29 @@ class RobotBrain {
     print('[RobotBrain] Handling command: ${command.type}');
     switch (command.type) {
       case CommandType.detect:
-        final objects = objectDetector.lastDetectedObjects;
+        final imageBytes = await cameraController.takePicture().then((x) => x.readAsBytes());
+        final objects = await objectDetector.detectObjects(imageBytes);
         if (objects.isNotEmpty) {
           voiceProcessor.speak("I see ${objects.join(', ')}");
         } else {
           voiceProcessor.speak("I don't see any objects");
         }
         return null;
+
       case CommandType.follow:
         humanFollower.activate();
         voiceProcessor.speak("Starting to follow you");
         return "follow";
+
       case CommandType.command:
         humanFollower.deactivate();
         return command.action;
+
       case CommandType.question:
         String answer = await qaSystem.answer(command.text ?? "");
         voiceProcessor.speak(answer);
         return null;
+
       default:
         return null;
     }

@@ -38,6 +38,9 @@ class ObjectDetector {
     'clock','vase','scissors','teddy bear','hair drier','toothbrush'
   ];
 
+  List<String> _lastDetectedObjects = [];
+  List<String> get lastDetectedObjects => _lastDetectedObjects;
+
   Future<void> loadModel() async {
     print('[ObjectDetector] Loading YOLOv5 model...');
     try {
@@ -73,9 +76,9 @@ class ObjectDetector {
     }
 
     final output3d = reshape1DTo3D(output, 1, 25200, 85);
-    final labels = _processOutput(output3d[0]);
-    print('[ObjectDetector] Detected labels: $labels');
-    return labels;
+    _lastDetectedObjects = _processOutput(output3d[0]);
+    print('[ObjectDetector] Detected labels: $_lastDetectedObjects');
+    return _lastDetectedObjects;
   }
 
   Future<List<DetectedObject>> detectObjectsWithBoxes(Uint8List imageBytes) async {
