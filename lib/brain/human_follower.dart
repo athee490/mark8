@@ -3,11 +3,18 @@ import 'package:image/image.dart' as img;
 import 'object_detector.dart';
 import 'navigation_logic.dart';
 
+class DetectedObject {
+  final String label;
+  final img.Rectangle boundingBox;
+
+  DetectedObject({required this.label, required this.boundingBox});
+}
+
 class HumanFollower {
   final ObjectDetector _objectDetector;
   final DepthNavigator _navigator;
   bool _isActive = false;
-  List<int> _lastBoundingBox = <int>[];
+  List<int> _lastBoundingBox = [];
   int _lostFrames = 0;
   static const int maxLostFrames = 5;
 
@@ -26,13 +33,12 @@ class HumanFollower {
   void deactivate() {
     print('[HumanFollower] deactivate called');
     _isActive = false;
-    _lastBoundingBox = <int>[];
+    _lastBoundingBox = [];
     _lostFrames = 0;
   }
 
   String get _lastDirection {
     if (_lastBoundingBox.isEmpty) return 'left';
-    // _lastBoundingBox: [xMin, yMin, xMax, yMax]
     final xMin = _lastBoundingBox[0];
     final xMax = _lastBoundingBox[2];
     return xMin < xMax ? 'left' : 'right';
@@ -52,18 +58,14 @@ class HumanFollower {
   String _navigateTowardHuman(
       List<int> bbox, List<List<double>> depthMap, int imageWidth, int imageHeight) {
     print('[HumanFollower] _navigateTowardHuman called');
-    if (depthMap.isEmpty) {
-      print('[HumanFollower] Empty depth map');
-      return 'stop';
-    }
+    if (depthMap.isEmpty) return 'stop';
 
     final centerX = (bbox[0] + bbox[2]) ~/ 2;
     final centerY = (bbox[1] + bbox[3]) ~/ 2;
     final targetDepth = _getDepthAtPoint(depthMap, centerX, centerY);
     final groundDepth = _getGroundDepth(depthMap, imageHeight);
 
-    // Use instance fields in case cliffThreshold/groundHeightRatio are not static
-    if (groundDepth > _navigator.cliffThreshold) {
+    if (groundDepth > 2.0) {
       print('[HumanFollower] Cliff detected');
       return 'stop';
     }
@@ -87,91 +89,64 @@ class HumanFollower {
   }
 
   double _getDepthAtPoint(List<List<double>> depthMap, int x, int y) {
-    print('[HumanFollower] _getDepthAtPoint: x=$x, y=$y');
     if (y < 0 || y >= depthMap.length || x < 0 || x >= depthMap[0].length) {
-      print('[HumanFollower] _getDepthAtPoint: out of bounds');
       return 0.0;
     }
-    final value = depthMap[y][x];
-    print('[HumanFollower] _getDepthAtPoint: value=$value');
-    return value;
+    return depthMap[y][x];
   }
 
   double _getGroundDepth(List<List<double>> depthMap, int imageHeight) {
-    final groundStart = (imageHeight * (1.0 - _navigator.groundHeightRatio)).toInt();
-    print('[HumanFollower] _getGroundDepth: groundStart=$groundStart');
+    final groundStart = (imageHeight * (1.0 - 0.2)).toInt(); // 0.2 from groundHeightRatio
     double sum = 0.0;
     int count = 0;
+
     for (int y = groundStart; y < depthMap.length; y++) {
       for (int x = 0; x < depthMap[y].length; x++) {
         sum += depthMap[y][x];
         count++;
       }
     }
-    final avg = count > 0 ? sum / count : 0.0;
-    print('[HumanFollower] _getGroundDepth: avg=$avg, count=$count');
-    return avg;
+    return count > 0 ? sum / count : 0.0;
   }
 
-  /// Detects a human and returns the bounding box [xMin, yMin, xMax, yMax].
   Future<List<int>> _detectHuman(img.Image image) async {
     print('[HumanFollower] _detectHuman called');
     final pngBytes = Uint8List.fromList(img.encodePng(image));
-    final detectedObjects = await _objectDetector.detectObjects(pngBytes);
-    print('[HumanFollower] Detected objects: $detectedObjects');
-
+    final detectedObjects = await _objectDetector.detectObjectsWithBoxes(pngBytes);
     for (final obj in detectedObjects) {
       print('[HumanFollower] Checking object: label=${obj.label}, bbox=${obj.boundingBox}');
       if (obj.label == 'person') {
         final box = obj.boundingBox;
-        final bbox = [
+        return [
           box.left.toInt(),
           box.top.toInt(),
           box.right.toInt(),
           box.bottom.toInt(),
         ];
-        print('[HumanFollower] Returning bbox: $bbox');
-        return bbox;
       }
     }
-
-    print('[HumanFollower] No person detected');
-    return <int>[];
+    return [];
   }
 
-  /// Processes the image and depth map, returning a navigation command.
-  Future<String> follow(
-      Uint8List imageBytes, List<List<double>> depthMap) async {
+  Future<String> follow(Uint8List imageBytes, List<List<double>> depthMap) async {
     print('[HumanFollower] follow called');
-    if (!_isActive) {
-      print('[HumanFollower] Not active');
-      return 'stop';
-    }
+    if (!_isActive) return 'stop';
 
     final image = img.decodeImage(imageBytes);
-    if (image == null) {
-      print('[HumanFollower] Failed to decode image');
-      return 'stop';
-    }
-    print('[HumanFollower] Image decoded: ${image.width}x${image.height}');
+    if (image == null) return 'stop';
 
     final bbox = await _detectHuman(image);
-    print('[HumanFollower] Bounding box: $bbox');
-
     if (bbox.isEmpty) {
       _lostFrames++;
-      print('[HumanFollower] Human lost, lostFrames=$_lostFrames');
       if (_lostFrames > maxLostFrames) {
         deactivate();
-        print('[HumanFollower] Max lost frames reached, deactivating');
         return 'stop';
       }
       return _trackLastKnownPosition(depthMap);
     }
 
     _lostFrames = 0;
-    _lastBoundingBox = List<int>.from(bbox);
-    return _navigateTowardHuman(
-        _lastBoundingBox, depthMap, image.width, image.height);
+    _lastBoundingBox = bbox;
+    return _navigateTowardHuman(bbox, depthMap, image.width, image.height);
   }
 }
