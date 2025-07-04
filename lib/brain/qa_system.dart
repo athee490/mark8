@@ -14,42 +14,43 @@ class QASystem {
     try {
       final data = await rootBundle.loadString('assets/qa_database.json');
       _qaDatabase = Map<String, String>.from(json.decode(data));
-      print('[QASystem] QA database loaded: \\${_qaDatabase.length} entries');
+      print('[QASystem] QA database loaded: ${_qaDatabase.length} entries');
     } catch (e) {
       print('[QASystem] QA database error: $e');
     }
-    // Check Gemini availability
-    _geminiAvailable = dotenv.env['GEMINI_API_KEY'] != null && dotenv.env['GEMINI_API_KEY']!.isNotEmpty;
-    print('[QASystem] Gemini available: \\$_geminiAvailable');
+
+    _geminiAvailable = dotenv.env['GEMINI_API_KEY'] != null &&
+        dotenv.env['GEMINI_API_KEY']!.isNotEmpty;
+    print('[QASystem] Gemini available: $_geminiAvailable');
   }
 
   Future<String> answer(String question) async {
-    print('[QASystem] Answering question: \\${question}');
-    // 1. Try local database
+    print('[QASystem] Answering question: $question');
+
     final localAnswer = _findSimilarQuestion(question);
     if (localAnswer != null) {
-      print('[QASystem] Found local answer');
+      print('[QASystem] Found local answer: $localAnswer');
       return localAnswer;
     }
-    // 2. Try Gemini API
+
     if (_geminiAvailable) {
       print('[QASystem] Querying Gemini API...');
       final geminiAnswer = await _askGemini(question);
-      print('[QASystem] Gemini answer: \\${geminiAnswer}');
+      print('[QASystem] Gemini answer: $geminiAnswer');
       return geminiAnswer;
     }
-    print('[QASystem] No answer found');
-    return "I don't know the answer to that";
+
+    print('[QASystem] No local or Gemini answer available');
+    return "I don't know the answer to that.";
   }
 
   String? _findSimilarQuestion(String question) {
-    print('[QASystem] Searching for similar question: \\${question}');
+    print('[QASystem] Searching for similar question: $question');
     final qLower = question.toLowerCase();
-    // Simple keyword matching
     for (final entry in _qaDatabase.entries) {
       final keywords = entry.key.toLowerCase().split(' ');
       if (keywords.every(qLower.contains)) {
-        print('[QASystem] Match found: \\${entry.key}');
+        print('[QASystem] Match found: ${entry.key}');
         return entry.value;
       }
     }
@@ -58,20 +59,21 @@ class QASystem {
   }
 
   Future<String> _askGemini(String question) async {
-    print('[QASystem] Asking Gemini: \\${question}');
+    print('[QASystem] Asking Gemini: $question');
     try {
       final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
       if (apiKey.isEmpty) {
         print('[QASystem] Gemini API key missing');
         return "Gemini API key is missing.";
       }
+
       final model = GenerativeModel(model: 'gemini-pro', apiKey: apiKey);
       final response = await model.generateContent([Content.text(question)]);
-      print('[QASystem] Gemini response: \\${response.text}');
+      print('[QASystem] Gemini response: ${response.text}');
       return response.text ?? "I couldn't understand that question";
     } catch (e) {
       print('[QASystem] Gemini connection error: $e');
-      return "Connection error: \\${e.toString()}";
+      return "Connection error: ${e.toString()}";
     }
   }
 }

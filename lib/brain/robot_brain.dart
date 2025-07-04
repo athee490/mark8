@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+
 import 'depth_estimator.dart';
 import 'object_detector.dart';
 import 'voice_processor.dart';
@@ -67,19 +69,26 @@ class RobotBrain {
   }
 
   void start() {
-    if (_isRunning) return;
+    if (_isRunning) {
+      print('[RobotBrain] Already running');
+      return;
+    }
     _isRunning = true;
+    print('[RobotBrain] Starting voice processor...');
     voiceProcessor.startListening();
+    print('[RobotBrain] Starting frame processing...');
     _startFrameProcessing();
   }
 
   void stop() {
+    print('[RobotBrain] Stopping...');
     _isRunning = false;
     voiceProcessor.stopListening();
     _frameTimer?.cancel();
   }
 
   void dispose() {
+    print('[RobotBrain] Disposing components...');
     stop();
     cameraController.dispose();
     depthEstimator.dispose();
@@ -96,17 +105,18 @@ class RobotBrain {
         final imageBytes = await frame.readAsBytes();
         await _processFrame(imageBytes);
       } catch (e) {
-        debugPrint("Frame processing error: $e");
+        debugPrint("[RobotBrain] Frame processing error: $e");
       }
     });
   }
 
   Future<String?> _handleCommand(Command command) async {
+    print('[RobotBrain] Handling command: ${command.type}');
     switch (command.type) {
       case CommandType.detect:
         final objects = objectDetector.lastDetectedObjects;
         if (objects.isNotEmpty) {
-          voiceProcessor.speak("I see ${objects.join(', ')}");
+          voiceProcessor.speak("I see ${objects.join(', ')}");
         } else {
           voiceProcessor.speak("I don't see any objects");
         }
@@ -128,21 +138,28 @@ class RobotBrain {
   }
 
   Future<void> _processFrame(Uint8List imageBytes) async {
-    // Depth estimation
+    print('[RobotBrain] Processing frame...');
     final depthMap = await depthEstimator.estimateDepth(imageBytes);
-    // Object detection
+    print('[RobotBrain] Depth estimated');
+
     await objectDetector.detectObjects(imageBytes);
-    // Voice command processing
+    print('[RobotBrain] Objects detected');
+
     final command = voiceProcessor.getCommand();
-    // Navigation logic
+    print('[RobotBrain] Retrieved command: ${command?.type}');
+
     String? action;
     if (humanFollower.isActive) {
+      print('[RobotBrain] Human follower is active');
       action = await humanFollower.follow(imageBytes, depthMap);
     } else if (command != null) {
+      print('[RobotBrain] Using command handler');
       action = await _handleCommand(command);
     } else {
+      print('[RobotBrain] Using depth navigator fallback');
       action = depthNavigator.getNavigationAction(depthMap);
     }
-    debugPrint("Action: $action");
+
+    debugPrint("[RobotBrain] Final action: $action");
   }
 }

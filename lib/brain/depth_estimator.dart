@@ -13,30 +13,56 @@ class DepthEstimator {
   bool _isInitialized = false;
 
   Future<void> loadModel() async {
+    print('[DepthEstimator] Loading MiDaS depth model...');
     try {
       _interpreter = await TfLiteHelper.loadModel('assets/models/midas_small.tflite');
       _isInitialized = true;
+      print('[DepthEstimator] Model loaded successfully');
     } catch (e) {
+      print('[DepthEstimator] Error loading model: $e');
       throw Exception("Failed to load depth model: $e");
     }
   }
 
   Future<List<List<double>>> estimateDepth(Uint8List imageBytes) async {
-    if (!_isInitialized) return [];
+    print('[DepthEstimator] estimateDepth called');
+    if (!_isInitialized) {
+      print('[DepthEstimator] Not initialized');
+      return [];
+    }
 
-    // Preprocess image
-    final inputImage = img.decodeImage(imageBytes)!;
-    final resized = img.copyResize(inputImage, width: 256, height: 256);
-    final input = ImageUtils.imageToFloat32List(resized, 256, 256);
-    
-    // Run inference
-    final output = List.filled(256 * 256, 0.0);
-    _interpreter.run(input, output);
-    
-    return reshape1DTo2D(output, 256, 256);
+    try {
+      // Decode and resize image
+      final inputImage = img.decodeImage(imageBytes);
+      if (inputImage == null) {
+        print('[DepthEstimator] Failed to decode image');
+        return [];
+      }
+
+      print('[DepthEstimator] Original image size: ${inputImage.width}x${inputImage.height}');
+      final resized = img.copyResize(inputImage, width: 256, height: 256);
+      print('[DepthEstimator] Image resized to 256x256');
+
+      // Convert to float32 input tensor
+      final input = ImageUtils.imageToFloat32List(resized, 256, 256);
+      print('[DepthEstimator] Image converted to Float32 input');
+
+      // Run inference
+      final output = List.filled(256 * 256, 0.0);
+      _interpreter.run(input, output);
+      print('[DepthEstimator] Inference completed');
+
+      final depthMap = reshape1DTo2D(output, 256, 256);
+      print('[DepthEstimator] Depth map generated');
+      return depthMap;
+    } catch (e) {
+      print('[DepthEstimator] Error estimating depth: $e');
+      return [];
+    }
   }
 
   void dispose() {
+    print('[DepthEstimator] Disposing interpreter');
     _interpreter.close();
   }
 }
