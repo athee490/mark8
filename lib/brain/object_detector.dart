@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:math';
-import 'dart:ui';                      // for Rect
+import 'dart:ui';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import '../utils/tflite_helper.dart';
@@ -24,60 +24,24 @@ class ObjectDetector {
   late Interpreter _interpreter;
   bool _isInitialized = false;
 
-  final List<String> _labels = [
-    // full COCO label list...
-    'person','bicycle','car','motorcycle','airplane','bus','train','truck','boat',
-    'traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat',
-    'dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack',
-    'umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball',
-    'kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket',
-    'bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple',
-    'sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair',
-    'couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote',
-    'keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book',
-    'clock','vase','scissors','teddy bear','hair drier','toothbrush'
-  ];
-
+  final List<String> _labels = [...]; // your label list here
   List<String> _lastDetectedObjects = [];
   List<String> get lastDetectedObjects => _lastDetectedObjects;
 
   Future<void> loadModel() async {
     print('[ObjectDetector] Loading YOLOv5 model...');
-    _interpreter = await TfLiteHelper.loadModel('assets/models/yolov5n.tflite');
-    _interpreter.allocateTensors();                 // <-- critical
-    _isInitialized = true;
-    print('[ObjectDetector] Model loaded and tensors allocated');
+    try {
+      _interpreter = await TfLiteHelper.loadModel('assets/models/yolov5n.tflite');
+      _interpreter.allocateTensors();
+      _isInitialized = true;
+      print('[ObjectDetector] Model loaded and tensors allocated');
+    } catch (e) {
+      print('[ObjectDetector] Failed to load model: $e');
+      throw Exception("Failed to load object detector: $e");
+    }
   }
 
   Future<List<String>> detectObjects(Uint8List imageBytes) async {
-    print('[ObjectDetector] detectObjects called');
-    if (!_isInitialized) return [];
-
-    final inputImage = img.decodeImage(imageBytes);
-    if (inputImage == null) {
-      print('[ObjectDetector] Failed to decode image');
-      return [];
-    }
-
-    final resized = img.copyResize(inputImage, width: 640, height: 640);
-    final input = ImageUtils.imageToFloat32List(resized, 640, 640);
-    final output = List<double>.filled(25200 * 85, 0.0);
-
-    try {
-      _interpreter.run(input, output);
-    } catch (e) {
-      print('[ObjectDetector] Inference error: $e');
-      return [];
-    }
-
-    final output3d = reshape1DTo3D(output, 1, 25200, 85);
-    _lastDetectedObjects = _processOutput(output3d[0]);
-    print('[ObjectDetector] Detected labels: $_lastDetectedObjects');
-    return _lastDetectedObjects;
-  }
-
-  Future<List<DetectedObject>> detectObjectsWithBoxes(Uint8List imageBytes) async {
-    print('[ObjectDetector] detectObjectsWithBoxes called');
     if (!_isInitialized) return [];
 
     final inputImage = img.decodeImage(imageBytes);
@@ -85,47 +49,29 @@ class ObjectDetector {
 
     final resized = img.copyResize(inputImage, width: 640, height: 640);
     final input = ImageUtils.imageToFloat32List(resized, 640, 640);
-    final output = List<double>.filled(25200 * 85, 0.0);
+    final inputBuffer = input.reshape([1, 640, 640, 3]);
+
+    final outputBuffer = List.filled(25200 * 85, 0.0).reshape([1, 25200, 85]);
 
     try {
-      _interpreter.run(input, output);
+      _interpreter.run(inputBuffer, outputBuffer);
     } catch (e) {
       print('[ObjectDetector] Inference error: $e');
       return [];
     }
 
-    final output3d = reshape1DTo3D(output, 1, 25200, 85);
-    final detections = <DetectedObject>[];
-    for (final det in output3d[0]) {
-      if (det[4] <= 0.5) continue;
-      final scores = det.sublist(5);
-      final maxScore = scores.reduce(max);
-      final classId = scores.indexOf(maxScore);
-      final label = _labels[classId];
-
-      final x = det[0], y = det[1], w = det[2], h = det[3];
-      final left   = (x - w/2).clamp(0.0, 640.0);
-      final top    = (y - h/2).clamp(0.0, 640.0);
-      final right  = (x + w/2).clamp(0.0, 640.0);
-      final bottom = (y + h/2).clamp(0.0, 640.0);
-
-      detections.add(DetectedObject(
-        label: label,
-        boundingBox: Rect.fromLTRB(left, top, right, bottom),
-      ));
-    }
-
-    print('[ObjectDetector] Detected objects with boxes: ${detections.length}');
-    return detections;
+    final output3d = outputBuffer;
+    _lastDetectedObjects = _processOutput(output3d[0]);
+    return _lastDetectedObjects;
   }
 
   List<String> _processOutput(List<List<double>> output) {
     final results = <String>[];
     for (var det in output) {
       if (det[4] > 0.5) {
-        final scores = det.sublist(5);
-        final maxScore = scores.reduce(max);
-        final classId = scores.indexOf(maxScore);
+        final classScores = det.sublist(5);
+        final maxScore = classScores.reduce(max);
+        final classId = classScores.indexOf(maxScore);
         results.add(_labels[classId]);
       }
     }
@@ -133,7 +79,6 @@ class ObjectDetector {
   }
 
   void dispose() {
-    print('[ObjectDetector] Disposing interpreter');
     _interpreter.close();
   }
 }

@@ -14,10 +14,15 @@ class DepthEstimator {
 
   Future<void> loadModel() async {
     print('[DepthEstimator] Loading MiDaS depth model...');
-    _interpreter = await TfLiteHelper.loadModel('assets/models/midas_small.tflite');
-    _interpreter.allocateTensors();                 // <-- critical
-    _isInitialized = true;
-    print('[DepthEstimator] Model loaded and tensors allocated');
+    try {
+      _interpreter = await TfLiteHelper.loadModel('assets/models/midas_small.tflite');
+      _interpreter.allocateTensors();
+      _isInitialized = true;
+      print('[DepthEstimator] Model loaded and tensors allocated');
+    } catch (e) {
+      print('[DepthEstimator] Error loading model: $e');
+      throw Exception("Failed to load depth model: $e");
+    }
   }
 
   Future<List<List<double>>> estimateDepth(Uint8List imageBytes) async {
@@ -32,23 +37,29 @@ class DepthEstimator {
 
     final resized = img.copyResize(inputImage, width: 256, height: 256);
     final input = ImageUtils.imageToFloat32List(resized, 256, 256);
-    final output = List<double>.filled(256 * 256, 0.0);
+
+    var inputTensor = _interpreter.getInputTensor(0);
+    var shape = inputTensor.shape;
+    var type = inputTensor.type;
+
+    print('[DepthEstimator] Input tensor shape: $shape, type: $type');
+
+    final inputBuffer = input.reshape([1, 256, 256, 3]);
+
+    final outputBuffer = List.filled(256 * 256, 0.0).reshape([1, 256, 256]);
 
     try {
-      _interpreter.run(input, output);
-      print('[DepthEstimator] Inference completed');
+      _interpreter.run(inputBuffer, outputBuffer);
     } catch (e) {
       print('[DepthEstimator] Inference error: $e');
       return [];
     }
 
-    final depthMap = reshape1DTo2D(output, 256, 256);
-    print('[DepthEstimator] Depth map generated');
-    return depthMap;
+    final flat = outputBuffer.expand((e) => e).toList();
+    return reshape1DTo2D(flat, 256, 256);
   }
 
   void dispose() {
-    print('[DepthEstimator] Disposing interpreter');
     _interpreter.close();
   }
 }
