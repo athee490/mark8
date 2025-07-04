@@ -14,25 +14,15 @@ class DepthEstimator {
 
   Future<void> loadModel() async {
     print('[DepthEstimator] Loading MiDaS depth model...');
-    try {
-      // Load the TFLite model
-      _interpreter = await TfLiteHelper.loadModel('assets/models/midas_small.tflite');
-      // Allocate tensors BEFORE inference
-      _interpreter.allocateTensors();
-      _isInitialized = true;
-      print('[DepthEstimator] Model loaded and tensors allocated');
-    } catch (e) {
-      print('[DepthEstimator] Error loading model: $e');
-      throw Exception("Failed to load depth model: $e");
-    }
+    _interpreter = await TfLiteHelper.loadModel('assets/models/midas_small.tflite');
+    _interpreter.allocateTensors();                 // <-- critical
+    _isInitialized = true;
+    print('[DepthEstimator] Model loaded and tensors allocated');
   }
 
   Future<List<List<double>>> estimateDepth(Uint8List imageBytes) async {
     print('[DepthEstimator] estimateDepth called');
-    if (!_isInitialized) {
-      print('[DepthEstimator] Not initialized');
-      return [];
-    }
+    if (!_isInitialized) return [];
 
     final inputImage = img.decodeImage(imageBytes);
     if (inputImage == null) {
@@ -40,14 +30,10 @@ class DepthEstimator {
       return [];
     }
 
-    print('[DepthEstimator] Original image size: ${inputImage.width}x${inputImage.height}');
     final resized = img.copyResize(inputImage, width: 256, height: 256);
-    print('[DepthEstimator] Image resized to 256x256');
-
     final input = ImageUtils.imageToFloat32List(resized, 256, 256);
-    print('[DepthEstimator] Input tensor prepared: ${input.length} elements');
-
     final output = List<double>.filled(256 * 256, 0.0);
+
     try {
       _interpreter.run(input, output);
       print('[DepthEstimator] Inference completed');

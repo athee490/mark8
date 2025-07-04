@@ -19,7 +19,9 @@ class RobotBrain {
   late DepthNavigator depthNavigator;
   late HumanFollower humanFollower;
   late QASystem qaSystem;
+
   bool _isRunning = false;
+  bool _isCapturingFrame = false; // <-- Camera guard
   Timer? _frameTimer;
 
   RobotBrain({required this.cameras});
@@ -83,6 +85,7 @@ class RobotBrain {
   void stop() {
     print('[RobotBrain] Stopping...');
     _isRunning = false;
+    _isCapturingFrame = false;
     voiceProcessor.stopListening();
     _frameTimer?.cancel();
   }
@@ -99,13 +102,17 @@ class RobotBrain {
   void _startFrameProcessing() {
     const frameInterval = Duration(milliseconds: 500); // 2 FPS
     _frameTimer = Timer.periodic(frameInterval, (timer) async {
-      if (!_isRunning) return;
+      if (!_isRunning || _isCapturingFrame) return;
+
+      _isCapturingFrame = true; // <-- guard set
       try {
         final frame = await cameraController.takePicture();
         final imageBytes = await frame.readAsBytes();
         await _processFrame(imageBytes);
       } catch (e) {
         debugPrint("[RobotBrain] Frame processing error: $e");
+      } finally {
+        _isCapturingFrame = false; // <-- guard release
       }
     });
   }
