@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import '../utils/tflite_helper.dart';
 import '../utils/image_utils.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
+
 
 class DetectedObject {
   final String label;
