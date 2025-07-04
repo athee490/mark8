@@ -1,13 +1,14 @@
+// object_detector.dart
 import 'dart:typed_data';
 import 'dart:math';
-import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import '../utils/tflite_helper.dart';
 import '../utils/image_utils.dart';
 
 class DetectedObject {
   final String label;
-  final img.Rectangle boundingBox;
+  final Rect boundingBox;
 
   DetectedObject({required this.label, required this.boundingBox});
 }
@@ -22,24 +23,21 @@ List<List<List<double>>> reshape1DTo3D(List<double> input, int d1, int d2, int d
 
 class ObjectDetector {
   late Interpreter _interpreter;
+  final List<String> _labels = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
+    'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat',
+    'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
+    'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+    'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+    'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+    'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair',
+    'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
+    'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book',
+    'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+  ];
+
   bool _isInitialized = false;
   List<String> lastDetectedObjects = [];
-
-  final List<String> _labels = [
-    'person', 'bicycle', 'car', 'motorbike', 'aeroplane', 'bus', 'train',
-    'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
-    'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep',
-    'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
-    'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard',
-    'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard',
-    'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork',
-    'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
-    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair',
-    'sofa', 'pottedplant', 'bed', 'diningtable', 'toilet', 'tvmonitor',
-    'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
-    'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
-    'scissors', 'teddy bear', 'hair drier', 'toothbrush'
-  ];
 
   Future<void> loadModel() async {
     print('[ObjectDetector] Loading model...');
@@ -58,18 +56,17 @@ class ObjectDetector {
     if (!_isInitialized) return [];
 
     final inputImage = img.decodeImage(imageBytes);
-    if (inputImage == null) {
-      print('[ObjectDetector] Failed to decode image');
-      return [];
-    }
+    if (inputImage == null) return [];
 
     final resized = img.copyResize(inputImage, width: 640, height: 640);
     final input = ImageUtils.imageToFloat32List(resized, 640, 640);
     final output = List.filled(25200 * 85, 0.0);
-    _interpreter.run(input, output);
-    final output3d = reshape1DTo3D(output, 1, 25200, 85);
 
+    _interpreter.run(input, output);
+
+    final output3d = reshape1DTo3D(output, 1, 25200, 85);
     lastDetectedObjects = _processOutput(output3d[0]);
+
     return lastDetectedObjects;
   }
 
@@ -77,14 +74,10 @@ class ObjectDetector {
     print('[ObjectDetector] detectObjectsWithBoxes called');
     if (!_isInitialized) return [];
 
-    final inputImage = img.decodeImage(imageBytes);
-    if (inputImage == null) {
-      print('[ObjectDetector] Failed to decode image');
-      return [];
-    }
-
+    final inputImage = img.decodeImage(imageBytes)!;
     final resized = img.copyResize(inputImage, width: 640, height: 640);
     final input = ImageUtils.imageToFloat32List(resized, 640, 640);
+
     final output = List.filled(25200 * 85, 0.0);
     _interpreter.run(input, output);
     final output3d = reshape1DTo3D(output, 1, 25200, 85);
@@ -108,7 +101,7 @@ class ObjectDetector {
         final right = (x + w / 2).clamp(0, 640);
         final bottom = (y + h / 2).clamp(0, 640);
 
-        final rect = img.Rectangle(left.toInt(), top.toInt(), right.toInt(), bottom.toInt());
+        final rect = Rect.fromLTRB(left.toDouble(), top.toDouble(), right.toDouble(), bottom.toDouble());
         detections.add(DetectedObject(label: label, boundingBox: rect));
       }
     }
@@ -117,7 +110,6 @@ class ObjectDetector {
   }
 
   List<String> _processOutput(List<List<double>> output) {
-    print('[ObjectDetector] Processing output...');
     final results = <String>[];
     for (var detection in output) {
       final confidence = detection[4];
@@ -128,7 +120,7 @@ class ObjectDetector {
         results.add(_labels[classId]);
       }
     }
-    return results.toSet().toList(); // Unique
+    return results.toSet().toList();
   }
 
   void dispose() {
