@@ -1,15 +1,8 @@
 import 'dart:typed_data';
-import 'dart:ui'; // ✅ For Rect
+import 'dart:ui'; // For Rect
 import 'package:image/image.dart' as img;
 import 'object_detector.dart';
 import 'navigation_logic.dart';
-
-class DetectedObject {
-  final String label;
-  final Rect boundingBox;
-
-  DetectedObject({required this.label, required this.boundingBox});
-}
 
 class HumanFollower {
   final ObjectDetector _objectDetector;
@@ -76,7 +69,7 @@ class HumanFollower {
   }
 
   double _getGroundDepth(List<List<double>> depthMap, int imageHeight) {
-    final groundStart = (imageHeight * 0.8).toInt(); // groundHeightRatio = 0.2
+    final groundStart = (imageHeight * 0.8).toInt();
     double sum = 0.0;
     int count = 0;
 
