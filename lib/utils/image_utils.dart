@@ -9,9 +9,9 @@ class ImageUtils {
     for (int y = 0; y < inputHeight; y++) {
       for (int x = 0; x < inputWidth; x++) {
         final pixel = resized.getPixel(x, y);
-        floatList[index++] = ((pixel >> 16) & 0xFF) / 255.0; // Red
-        floatList[index++] = ((pixel >> 8) & 0xFF) / 255.0;  // Green
-        floatList[index++] = (pixel & 0xFF) / 255.0;         // Blue
+        floatList[index++] = pixel.r / 255.0; // Red
+        floatList[index++] = pixel.g / 255.0; // Green
+        floatList[index++] = pixel.b / 255.0; // Blue
       }
     }
 
